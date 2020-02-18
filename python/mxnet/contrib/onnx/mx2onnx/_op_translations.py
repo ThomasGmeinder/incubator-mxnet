@@ -2103,3 +2103,130 @@ def convert_take(node, **kwargs):
         name=name,
     )
     return [node]
+
+@mx_op.register("_contrib_MultiProposal")
+def convert_contrib_MultiProposal(node, **kwargs):
+    """Map MXNet's ROIPooling operator attributes to onnx's MaxRoiPool
+    operator and return the created node.
+    """
+    name, input_nodes, attrs = get_inputs(node, kwargs)
+
+    #pooled_shape = convert_string_to_list(attrs.get('pooled_size'))
+    #scale = float(attrs.get("spatial_scale"))
+
+    axis = int(attrs.get("dim", 1))
+
+    # Using Concat is a hack to make the graph generation pass
+    node = onnx.helper.make_node(
+        "Concat",
+        input_nodes,
+        [name],
+        axis=axis,
+        name=name
+    )
+    return [node]
+
+
+@mx_op.register("_contrib_box_nms")
+def convert__contrib_box_nms(node, **kwargs):
+    """Map MXNet's ROIPooling operator attributes to onnx's MaxRoiPool
+    operator and return the created node.
+    """
+    name, input_nodes, attrs = get_inputs(node, kwargs)
+
+    # Using Concat is a hack to make the graph generation pass
+    node = onnx.helper.make_node(
+        "Concat",
+        input_nodes,
+        [name],
+        axis=0,
+        name=name
+    )
+    return [node]
+
+@mx_op.register("zeros_like")
+def convert_zeros_like(node, **kwargs):
+    """Map MXNet's zeros_like operator attributes to onnx's ConstantOfShape operator
+    and return the created node.
+    """
+    name, input_nodes, _ = get_inputs(node, kwargs)
+
+    tensor_value = onnx.helper.make_tensor("value", onnx.TensorProto.FLOAT,
+                                       [1], [0])
+
+    node = onnx.helper.make_node(
+        'ConstantOfShape',
+        input_nodes,
+        [name],
+        value=tensor_value,
+        name=name
+    )
+    return [node]
+
+@mx_op.register("ones_like")
+def convert_ones_like(node, **kwargs):
+    """Map MXNet's zeros_like operator attributes to onnx's ConstantOfShape operator
+    and return the created node.
+    """
+    name, input_nodes, _ = get_inputs(node, kwargs)
+
+    tensor_value = onnx.helper.make_tensor("value", onnx.TensorProto.FLOAT,
+                                       [1], [1])
+    node = onnx.helper.make_node(
+        'ConstantOfShape',
+        input_nodes,
+        [name],
+        value=tensor_value,
+        name=name
+    )
+    return [node]
+
+@mx_op.register("where")
+def convert_where(node, **kwargs):
+    """Map MXNet's where operator attributes to onnx's Where operator
+    and return the created node.
+    """
+    return create_basic_op_node('Where', node, kwargs)
+ 
+@mx_op.register("slice")
+def convert_slice(node, **kwargs):
+    """Map MXNet's where operator attributes to onnx's Where operator
+    and return the created node.
+    """
+    return create_basic_op_node('Slice', node, kwargs)
+
+@mx_op.register("broadcast_minimum")
+def convert_minimum(node, **kwargs):
+    """Map MXNet's broadcast_minimum operator attributes to onnx's Min operator
+    and return the created node.
+    """
+    return create_basic_op_node('Min', node, kwargs)
+
+# Convert scalar value into node and pass it as input to mul_node
+@mx_op.register("_maximum_scalar")
+def convert_maximum_scalar(node, **kwargs):
+    """Map MXNet's _maximum_scalar operator attributes to onnx's Max operator.
+    Creates a new node for the input scalar value, adds it to the initializer
+    and return multiple created nodes.
+    """
+    return scalar_op_helper(node, 'Max', **kwargs)
+
+@mx_op.register("_greater_scalar")
+def convert_broadcast_greater_scalar(node, **kwargs):
+    """Map MXNet's _greater_scalar operator attributes to onnx's Greater operator
+    and return the created node.
+    """
+
+    name, input_nodes, attrs = get_inputs(node, kwargs)
+
+    scalar_tensor, mul_node = scalar_op_helper(node, '', **kwargs)
+    input_nodes.append(scalar_tensor.name)
+
+    node = onnx.helper.make_node(
+        "Greater",
+        input_nodes,
+        [name],
+        name=name,
+    )
+    return [node]
+
