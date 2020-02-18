@@ -359,7 +359,9 @@ def convert_batchnorm(node, **kwargs):
         momentum=momentum,
         # MXNet computes mean and variance per feature for batchnorm
         # Default for onnx is across all spatial features. So disabling the parameter.
-        spatial=0
+        # Removing assignment because it causes error with ONNX from at least version 1.4.1 forward:
+        # Unrecognized attribute: spatial for operator BatchNormalization
+        #spatial=0
     )
     return [bn_node]
 
