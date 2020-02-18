@@ -128,6 +128,7 @@ def get_boolean_attribute_value(attrs, attr_name):
 
 def get_inputs(node, kwargs):
     """Helper function to get inputs"""
+    from onnx import NodeProto
     name = node["name"]
     proc_nodes = kwargs["proc_nodes"]
     index_lookup = kwargs["index_lookup"]
@@ -137,7 +138,13 @@ def get_inputs(node, kwargs):
     input_nodes = []
     for ip in inputs:
         input_node_id = index_lookup[ip[0]]
-        input_nodes.append(proc_nodes[input_node_id].name)
+        proc_node = proc_nodes[input_node_id]
+
+        if isinstance(proc_node, NodeProto):
+           # Nodes can have multiple outputs. Index the output with ip[1]
+           input_nodes.append(proc_node.output[ip[1]])
+        else:
+           input_nodes.append(proc_node.name)
 
     return name, input_nodes, attrs
 
